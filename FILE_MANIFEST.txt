@@ -1,0 +1,377 @@
+================================================================================
+                    SecureChat iOS SDK — File Manifest
+                            Version 1.0.0
+================================================================================
+
+项目根目录：/sessions/upbeat-exciting-albattani/mnt/chat/sdk-ios/
+
+================================================================================
+【配置文件】
+================================================================================
+
+Package.swift
+  → Swift Package Manager 配置文件
+  → 定义平台(iOS 16+)、依赖(无)、产品名(SecureChatSDK)
+
+================================================================================
+【文档文件】
+================================================================================
+
+README.md (1,200+ 行)
+  → 用户快速开始指南
+  → 包含：API 示例、数据模型、密钥体系、安全最佳实践
+  → 新手必读
+
+ARCHITECTURE.md (800+ 行)
+  → 开发者设计文档
+  → 包含：层次架构、文件分布、设计决策、密钥体系详解、事件流
+  → 开发者必读
+
+IMPLEMENTATION_SUMMARY.md (500+ 行)
+  → 实现总结报告
+  → 包含：完成清单、代码统计、质量指标、路线图、部署指南
+  → 项目经理必读
+
+FILE_MANIFEST.txt (本文件)
+  → 文件清单
+
+================================================================================
+【源代码：Swift 源文件 (18个)】
+================================================================================
+
+Sources/SecureChatSDK/
+
+├─ index.swift (100+ 行)
+│  └─ 公开 API 导出、版本信息、便利函数
+
+├─ SecureChatClient.swift (500+ 行)
+│  └─ 主门面类（单例 + 实例模式）
+│     ├─ 连接管理：connect(), disconnect()
+│     ├─ 会话恢复：restoreSession()
+│     ├─ 消息发送：sendMessage(), sendTyping(), retractMessage()
+│     ├─ 历史查询：getHistory(), getMessage(), listSessions()
+│     ├─ 事件订阅：onMessage(), onStatusChange(), onNetworkStateChange()
+│     ├─ 登出清理：logout(), clearAllHistory()
+│     └─ 安全功能：getSecurityCode()
+
+【Models 模块 — 数据结构定义】
+
+├─ models/Models.swift (550+ 行)
+│  └─ 所有核心数据结构
+│     ├─ StoredMessage — 消息模型
+│     ├─ SessionRecord — 会话模型
+│     ├─ StoredIdentity — 身份模型
+│     ├─ FriendProfile, UserProfile — 联系人
+│     ├─ ChannelInfo, ChannelPost — 频道
+│     ├─ VanityItem, PurchaseOrder — 靓号
+│     ├─ SecurityCode — 安全码
+│     └─ SDKError — 错误类型（11 种）
+
+├─ models/NetworkState.swift (30 行)
+│  └─ 网络状态枚举
+│     ├─ connecting — 正在连接
+│     ├─ connected — 已连接
+│     ├─ disconnected(retryCount) — 已断开
+│     ├─ closed — 连接已关闭
+│     └─ kicked(reason) — 被踢下线
+
+【Auth 模块 — 认证系统】
+
+├─ auth/AuthManager.swift (250+ 行)
+│  └─ 认证管理
+│     ├─ registerAccount() — 新用户注册（BIP39 + PoW + Challenge-Response）
+│     ├─ restoreSession() — 恢复历史会话（本地读取 + 认证）
+│     ├─ loginWithMnemonic() — 异地登录（恢复账号）
+│     ├─ 内部：authenticate() — Challenge-Response 认证流程
+│     └─ logout() — 登出（清除身份和 Token）
+
+【Keys 模块 — 密钥体系（最关键）】
+
+├─ keys/KeyDerivation.swift (700+ 行)
+│  └─ 密钥派生与管理（对标 Android 100% 兼容）
+│     ├─ newMnemonic() — 生成 12 词 BIP-39 助记词
+│     ├─ validateMnemonic() — 验证助记词（词库 + 校验和）
+│     ├─ mnemonicToSeed() — BIP-39 Seed 推导（PBKDF2-SHA512, 2048 iter）
+│     ├─ deriveSigningKey() — Ed25519 密钥派生（m/44'/0'/0'/0/0）
+│     ├─ deriveEcdhKey() — X25519 密钥派生（m/44'/1'/0'/0/0）
+│     ├─ deriveIdentity() — 完整身份派生（两对密钥）
+│     ├─ signChallenge() — Ed25519 签名（认证用）
+│     ├─ computeSharedSecret() — ECDH 共享密钥计算
+│     ├─ deriveSessionKey() — HKDF-SHA256 会话密钥派生
+│     ├─ computeSecurityCode() — SHA-256 安全码计算
+│     ├─ 内部：deriveHardened() — SLIP-0010 硬化派生
+│     ├─ 内部：hmacSha512() / hmacSha256() — HMAC 实现
+│     ├─ 内部：hkdf() — HKDF-SHA256 RFC 5869 实现
+│     └─ 含 BIP-39 词库（2048 个英文单词）
+
+【Crypto 模块 — 对称加密】
+
+├─ crypto/CryptoModule.swift (200+ 行)
+│  └─ 加密原语
+│     ├─ encrypt() — AES-256-GCM 加密（生成随机 IV，返回 Base64）
+│     ├─ decrypt() — AES-256-GCM 解密（拆 IV + ciphertext + tag）
+│     ├─ computePow() — Proof of Work（SHA256 迭代，异步）
+│     ├─ fromBase64() / toBase64() — Base64 编解码
+│     ├─ fromHex() / toHex() — 十六进制编解码
+│     └─ sha256() — SHA-256 哈希
+
+【HTTP 模块 — 网络客户端】
+
+├─ http/HttpClient.swift (450+ 行)
+│  └─ HTTP 客户端与请求体
+│     ├─ HttpClient (Actor)
+│     │  ├─ get<T>() — GET 请求
+│     │  ├─ post<T>() — POST 请求
+│     │  ├─ put<T>() — PUT 请求
+│     │  ├─ delete() — DELETE 请求
+│     │  ├─ fetch() — 原始请求（媒体上传用）
+│     │  ├─ setToken() — 设置 JWT
+│     │  ├─ getToken() — 获取 JWT
+│     │  └─ clearToken() — 清除 JWT
+│     ├─ RegisterRequest / RegisterResponse
+│     ├─ PowChallengeRequest / PowChallengeResponse
+│     ├─ AuthChallengeRequest / AuthChallengeResponse
+│     ├─ AuthVerifyRequest / AuthVerifyResponse
+│     ├─ SendMessageRequest
+│     ├─ SendFriendRequestRequest / AcceptFriendRequestRequest
+│     └─ CORE_API_BASE = "https://relay.daomessage.com" (硬编码)
+
+【Messaging 模块 — 消息系统】
+
+├─ messaging/MessageManager.swift (400+ 行)
+│  └─ 消息收发与管理
+│     ├─ send() — 发送文本消息（加密 + WS 帧）
+│     ├─ sendTyping() — 发送输入状态
+│     ├─ sendRetract() — 撤回消息
+│     ├─ sendDelivered() / sendRead() — 发送回执
+│     ├─ 内部：handleFrame() — WS 帧分发
+│     ├─ 内部：handleIncomingMessage() — 消息接收与解密
+│     ├─ 内部：handleTyping() — 输入状态处理
+│     ├─ 内部：handleRetract() — 消息撤回处理
+│     ├─ getHistory() — 获取消息历史
+│     ├─ getMessage() — 获取单条消息
+│     ├─ clearAllMessages() — 清空所有消息
+│     └─ 事件回调：onMessage, onStatusChange, onTyping
+
+├─ messaging/WSTransport.swift (450+ 行)
+│  └─ WebSocket 传输层
+│     ├─ connect() — 连接（建立 /ws?uuid=...&token=...）
+│     ├─ disconnect() — 断开
+│     ├─ send() — 发送 WS 帧
+│     ├─ 事件订阅：onNetworkStateChange(), onMessage(), onOpen(), onClose(), onGoaway()
+│     ├─ 内部：startReceiveLoop() — 消息接收循环
+│     ├─ 内部：handleIncomingMessage() — 消息处理
+│     ├─ 内部：startHeartbeat() — 心跳 ping（30s）
+│     ├─ 内部：scheduleReconnect() — 指数退避重连
+│     └─ Actor 并发模型（URLSessionWebSocketDelegate）
+
+【Contacts 模块 — 好友系统】
+
+├─ contacts/ContactsManager.swift (100+ 行)
+│  └─ 好友管理
+│     ├─ syncFriends() — 同步好友列表（自动创建会话）
+│     ├─ sendFriendRequest() — 发送好友请求
+│     ├─ acceptFriendRequest() — 接受好友请求
+│     └─ lookupUser() — 用户查找
+
+【Channels 模块 — 频道系统】
+
+├─ channels/ChannelsManager.swift (150+ 行)
+│  └─ 频道管理
+│     ├─ search() — 搜索频道
+│     ├─ getMine() — 获取我的频道
+│     ├─ getDetail() — 获取频道详情
+│     ├─ create() — 创建频道
+│     ├─ subscribe() / unsubscribe() — 订阅/取消订阅
+│     ├─ postMessage() — 发布帖子
+│     ├─ getPosts() — 获取帖子历史
+│     ├─ canPost() — 检查发帖权限
+│     ├─ listForSale() — 频道出售
+│     ├─ buyChannel() — 购买频道
+│     └─ buyQuota() — 购买创建配额
+
+【Media 模块 — 媒体管理】
+
+├─ media/MediaManager.swift (150+ 行)
+│  └─ 媒体上传/下载（加密）
+│     ├─ uploadImage() — 上传图片（加密）
+│     ├─ uploadFile() — 上传文件（加密）
+│     ├─ uploadVoice() — 上传语音（加密）
+│     ├─ downloadDecryptedMedia() — 下载并解密
+│     └─ 内部：uploadEncryptedMedia() — 加密上传公共逻辑
+
+【Push 模块 — 推送系统】
+
+├─ push/PushManager.swift (50+ 行)
+│  └─ APNs 推送管理
+│     ├─ registerAPNsToken() — 注册 APNs 凭证
+│     └─ disablePush() — 禁用推送
+
+【Security 模块 — 安全防护】
+
+├─ security/SecurityModule.swift (50+ 行)
+│  └─ MITM 防御（安全码）
+│     ├─ computeSecurityCode() — 计算安全码
+│     ├─ getSecurityCode() — 获取安全码结构体
+│     └─ verifySecurityCode() — 验证安全码
+
+【Vanity 模块 — 靓号管理】
+
+├─ vanity/VanityManager.swift (100+ 行)
+│  └─ 靓号购买与绑定
+│     ├─ search() — 搜索靓号
+│     ├─ purchase() — 购买靓号
+│     ├─ bind() — 绑定靓号（支付后）
+│     └─ getOrderStatus() — 查询订单状态
+
+【DB 模块 — 数据持久化】
+
+├─ db/Database.swift (600+ 行)
+│  └─ 文件系统数据库（Actor）
+│     ├─ Database (Actor, 单例)
+│     │  ├─ saveIdentity() / loadIdentity() / clearIdentity() — 身份
+│     │  ├─ saveSession() / loadSession() / getAllSessions() — 会话
+│     │  ├─ deleteSession() / markSessionVerified()
+│     │  ├─ saveMessage() / loadMessage() / getMessageHistory() — 消息
+│     │  ├─ clearAllMessages() / clearMessages()
+│     │  ├─ saveTrust() / loadTrust() — 信任记录
+│     │  └─ 数据文件位置：~/Documents/securechat/*.json
+│     ├─ SessionEntity — 会话实体
+│     ├─ MessageEntity — 消息实体
+│     └─ TrustEntity — 信任实体
+
+================================================================================
+【目录结构总览】
+================================================================================
+
+sdk-ios/
+├── Package.swift                                [配置]
+├── README.md                                    [用户文档]
+├── ARCHITECTURE.md                              [开发者文档]
+├── IMPLEMENTATION_SUMMARY.md                    [实现总结]
+├── FILE_MANIFEST.txt                            [本文件]
+│
+└── Sources/SecureChatSDK/
+    ├── index.swift                              [导出]
+    ├── SecureChatClient.swift                   [门面]
+    │
+    ├── models/
+    │   ├── Models.swift                         [数据结构]
+    │   └── NetworkState.swift                   [网络状态]
+    │
+    ├── auth/
+    │   └── AuthManager.swift                    [认证]
+    │
+    ├── keys/
+    │   └── KeyDerivation.swift                  [密钥派生]
+    │
+    ├── crypto/
+    │   └── CryptoModule.swift                   [加密]
+    │
+    ├── messaging/
+    │   ├── MessageManager.swift                 [消息收发]
+    │   └── WSTransport.swift                    [WebSocket]
+    │
+    ├── contacts/
+    │   └── ContactsManager.swift                [好友]
+    │
+    ├── channels/
+    │   └── ChannelsManager.swift                [频道]
+    │
+    ├── media/
+    │   └── MediaManager.swift                   [媒体]
+    │
+    ├── push/
+    │   └── PushManager.swift                    [推送]
+    │
+    ├── security/
+    │   └── SecurityModule.swift                 [安全]
+    │
+    ├── vanity/
+    │   └── VanityManager.swift                  [靓号]
+    │
+    ├── http/
+    │   └── HttpClient.swift                     [HTTP]
+    │
+    ├── db/
+    │   └── Database.swift                       [存储]
+    │
+    └── Resources/                               [空，预留资源目录]
+
+================================================================================
+【关键数据文件位置】（运行时生成）
+================================================================================
+
+~/Documents/securechat/
+├── identity.json                                [用户身份]
+│   └─ {uuid, aliasId, nickname, mnemonic, signingPublicKey, ecdhPublicKey}
+│
+├── sessions.json                                [会话列表]
+│   └─ [{conversationId, theirAliasId, sessionKeyBase64, trustState, ...}]
+│
+├── messages.json                                [消息历史]
+│   └─ [{id, conversationId, text, isMe, time, status, msgType?, ...}]
+│
+└── trusts.json                                  [信任记录]
+    └─ [{contactId, status, verifiedAt?, fingerprintSnapshot?}]
+
+================================================================================
+【核心常数与硬编码值】
+================================================================================
+
+API Base URL:
+  https://relay.daomessage.com
+
+WebSocket URL:
+  wss://relay.daomessage.com/ws?uuid={uuid}&token={token}
+
+密钥派生路径：
+  Ed25519: m/44'/0'/0'/0/0  （身份认证）
+  X25519:  m/44'/1'/0'/0/0  （消息加密）
+
+SLIP-0010 HMAC 密钥：
+  "ed25519 seed"
+
+会话密钥推导参数：
+  salt = SHA256(conversationId)
+  info = "securechat-session-v1"
+  length = 32
+
+BIP-39 参数：
+  熵大小：16 字节（128 bit）
+  词库大小：2048 个英文单词
+  PBKDF2 轮数：2048
+  Passphrase：无（空字符串）
+
+WebSocket 心跳：
+  间隔：30 秒
+  帧类型：ping
+
+重连策略：
+  最大尝试次数：10
+  退避公式：baseDelay * 2^(count-1)
+  baseDelay：1 秒
+
+消息回执自动发送：
+  delivered - 接收方客户端收到后
+  read - 应用层调用 markAsRead()
+
+================================================================================
+【版本信息】
+================================================================================
+
+SDK 版本：1.0.0
+协议版本：SecureChat v1
+最低 iOS 版本：16+
+Swift 版本：5.9+
+API Base：https://relay.daomessage.com
+创建日期：2026-04-15
+
+================================================================================
+【许可证】
+================================================================================
+
+SecureChat 加密通讯协议
+专有实现，仅供内部使用
+
+================================================================================

@@ -102,6 +102,14 @@ public final class SecureChatClient: Sendable {
     /// 安全模块（MITM 防御）
     public let security = SecurityModule()
 
+    // ── 0.3.0 响应式层 ──────────────────────────
+
+    /// 全局事件总线
+    public let events = EventBus()
+
+    /// 0.3.0 响应式 Contacts 模块(包装老 contacts)
+    public private(set) var contactsReactive: ContactsModule?
+
     // ──────────────────────────────────────────────────────────────────────
     // MARK: - 初始化
     // ──────────────────────────────────────────────────────────────────────
@@ -118,6 +126,11 @@ public final class SecureChatClient: Sendable {
         self.media = MediaManager(http: http)
         self.push = PushManager(http: http)
         self.vanity = VanityManager(http: http)
+
+        // 0.3.0 响应式层
+        if let c = self.contacts {
+            self.contactsReactive = ContactsModule(inner: c, events: self.events)
+        }
     }
 
     // ──────────────────────────────────────────────────────────────────────

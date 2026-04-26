@@ -51,10 +51,10 @@ public actor ContactsModule {
 
     public func sendRequest(toAliasId: String) async throws {
         do {
-            try await inner.sendFriendRequest(aliasId: toAliasId)
+            try await inner.sendFriendRequest(toAliasId: toAliasId)
             try await refresh()
         } catch {
-            events.emitError(SDKError(kind: .network, message: "sendRequest: \(error)"))
+            events.emitError(BusError(kind: .network, message: "sendRequest: \(error)"))
             throw error
         }
     }
@@ -82,12 +82,14 @@ public actor ContactsModule {
         _friends.next(optimistic)
 
         do {
-            let convId = try await inner.acceptFriendRequest(friendshipId: friendshipId)
+            // 注意 inner 期望 Int (历史遗留, 不是 Int64), 这里 cast.
+            try await inner.acceptFriendRequest(friendshipId: Int(friendshipId))
             try await refresh()
-            return convId
+            // inner.acceptFriendRequest 不返回 convId, refresh 后从 friends 里捞
+            return _friends.value.first(where: { $0.friendshipId == friendshipId })?.conversationId ?? ""
         } catch {
             _friends.next(before)
-            events.emitError(SDKError(kind: .network, message: "accept: \(error)"))
+            events.emitError(BusError(kind: .network, message: "accept: \(error)"))
             throw error
         }
     }
@@ -113,11 +115,11 @@ public actor ContactsModule {
         _friends.next(optimistic)
 
         do {
-            try await inner.rejectFriendRequest(friendshipId: friendshipId)
+            try await inner.rejectFriendRequest(friendshipId: Int(friendshipId))
             try await refresh()
         } catch {
             _friends.next(before)
-            events.emitError(SDKError(kind: .network, message: "reject: \(error)"))
+            events.emitError(BusError(kind: .network, message: "reject: \(error)"))
             throw error
         }
     }

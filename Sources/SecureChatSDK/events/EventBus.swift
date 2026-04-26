@@ -1,8 +1,17 @@
 import Foundation
 
 // ─── 类型 ──────────────────────────────────────────────
+//
+// 注意命名约定:
+//   models/NetworkState.swift 已有 NetworkState (enum with associated values, WSTransport 用)
+//   models/Models.swift       已有 SDKError (LocalizedError enum, 抛错用)
+//   models/Models.swift       已有 TypingEvent (Codable, Equatable)
+//
+// EventBus 想要更轻量的"通知用"类型. 用 Bus 前缀避免和 models/ 冲突.
+// 真实使用时 (e.g. ContactsModule) 调用 emitError(BusError(kind: .network, ...))
+// 不会和 models/ 的 SDKError 冲突.
 
-public enum NetworkState: String, Sendable, Equatable {
+public enum BusNetworkState: String, Sendable, Equatable {
     case disconnected, connecting, connected
 }
 
@@ -12,17 +21,17 @@ public enum SyncState: Sendable, Equatable {
     case done(catchUpDurationMs: Int64)
 }
 
-public enum SDKErrorKind: String, Sendable {
+public enum BusErrorKind: String, Sendable {
     case auth, network, rateLimit, crypto, server, unknown
 }
 
-public struct SDKError: Sendable {
-    public let kind: SDKErrorKind
+public struct BusError: Sendable {
+    public let kind: BusErrorKind
     public let message: String
     public let details: [String: String]?
     public let at: Int64
 
-    public init(kind: SDKErrorKind, message: String, details: [String: String]? = nil) {
+    public init(kind: BusErrorKind, message: String, details: [String: String]? = nil) {
         self.kind = kind
         self.message = message
         self.details = details
@@ -30,7 +39,7 @@ public struct SDKError: Sendable {
     }
 }
 
-public struct TypingEvent: Sendable {
+public struct BusTypingEvent: Sendable {
     public let fromAliasId: String
     public let conversationId: String
     public init(fromAliasId: String, conversationId: String) {
@@ -61,10 +70,10 @@ public struct GoawayEvent: Sendable {
 
 /// 内部事件总线(SDK 持有)
 public final class EventBus: @unchecked Sendable {
-    public let network: Observable<NetworkState>
+    public let network: Observable<BusNetworkState>
     public let sync: Observable<SyncState>
-    public let error: Observable<SDKError?>
-    public let typing: Observable<TypingEvent?>
+    public let error: Observable<BusError?>
+    public let typing: Observable<BusTypingEvent?>
     public let messageStatus: Observable<MessageStatusEvent?>
     public let goaway: Observable<GoawayEvent?>
 
@@ -77,10 +86,10 @@ public final class EventBus: @unchecked Sendable {
         self.goaway = Observable(initial: nil)
     }
 
-    public func emitNetwork(_ s: NetworkState) { network.next(s) }
+    public func emitNetwork(_ s: BusNetworkState) { network.next(s) }
     public func emitSync(_ s: SyncState) { sync.next(s) }
-    public func emitError(_ e: SDKError) { error.next(e) }
-    public func emitTyping(_ e: TypingEvent) { typing.next(e) }
+    public func emitError(_ e: BusError) { error.next(e) }
+    public func emitTyping(_ e: BusTypingEvent) { typing.next(e) }
     public func emitStatus(_ e: MessageStatusEvent) { messageStatus.next(e) }
     public func emitGoaway(_ e: GoawayEvent) { goaway.next(e) }
 }
